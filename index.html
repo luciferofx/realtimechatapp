@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animated Chat App</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #chat-container {
+      max-width: 800px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 40px);
+    }
+    header {
+      background: #4a6cf7;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    #messages {
+      flex: 1;
+      list-style: none;
+      padding: 20px;
+      margin: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .message {
+      max-width: 70%;
+      padding: 10px 15px;
+      border-radius: 18px;
+      line-height: 1.4;
+      animation: fadeInUp 0.4s ease-out;
+      word-wrap: break-word;
+    }
+    .message.mine {
+      align-self: flex-end;
+      background: #4a6cf7;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .message.other {
+      align-self: flex-start;
+      background: #e9ecef;
+      color: #333;
+      border-bottom-left-radius: 4px;
+    }
+    .system {
+      align-self: center;
+      background: rgba(0,0,0,0.1);
+      color: #555;
+      font-size: 0.85em;
+      padding: 8px 16px;
+      border-radius: 20px;
+      animation: fadeIn 0.5s ease;
+    }
+    .timestamp {
+      font-size: 0.7em;
+      opacity: 0.7;
+      margin-top: 4px;
+      text-align: right;
+    }
+    form {
+      display: flex;
+      padding: 15px;
+      background: #f8f9fa;
+      border-top: 1px solid #ddd;
+    }
+    input {
+      flex: 1;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 25px;
+      background: white;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+      font-size: 1em;
+      outline: none;
+    }
+    button {
+      margin-left: 10px;
+      padding: 12px 24px;
+      background: #4a6cf7;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #3a5ce5;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <header>Real-time Chat Room</header>
+    <ul id="messages"></ul>
+    <form id="form">
+      <input id="input" autocomplete="off" placeholder="Type your message..." />
+      <button>Send</button>
+    </form>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Persistent device-based ID
+    let userId = localStorage.getItem('chatUserId');
+    if (!userId) {
+      userId = Math.random().toString(36).substring(2, 8).toUpperCase();
+      localStorage.setItem('chatUserId', userId);
+    }
+
+    const socket = io({ query: { userId } });
+
+    const messages = document.getElementById('messages');
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+
+    function formatTime() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function addMessage({ userId: senderId, msg }, isMine = false) {
+      const item = document.createElement('li');
+      item.classList.add('message', isMine ? 'mine' : 'other');
+      item.innerHTML = `
+        <strong>${isMine ? 'You' : senderId}</strong><br>
+        ${msg}
+        <div class="timestamp">${formatTime()}</div>
+      `;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function addSystemMessage(text) {
+      const item = document.createElement('li');
+      item.classList.add('system');
+      item.textContent = text;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    // Receive messages from others
+    socket.on('chat message', (data) => {
+      addMessage(data, false);
+    });
+
+    socket.on('user joined', (id) => {
+      if (id !== userId) addSystemMessage(`${id} joined the chat`);
+    });
+
+    socket.on('user left', (id) => {
+      addSystemMessage(`${id} left the chat`);
+    });
+
+    addSystemMessage(`You are connected as ${userId}`);
+
+    // Send message
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value.trim()) {
+        const msg = input.value.trim();
+        socket.emit('chat message', msg);
+        // Show your own message immediately
+        addMessage({ userId, msg }, true);
+        input.value = '';
+      }
+    });
+  </script>
+</body>
+</html>
