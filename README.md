@@ -56,7 +56,7 @@ Love LuciChain? Help me keep it alive & growing! Your support means everything. 
 ## 💻 Installation & Running
 1. **Clone the repository**
 ```
-git clone https://github.com/yourusername/chat-app.git
+git clone https://github.com/luciferofx/realtimechatapp
 cd chat-app
 ```
 ## open the local project folder in terminal:
